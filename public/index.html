@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Awesome Shell Browser</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      color: #58a6ff;
+      white-space: nowrap;
+    }
+
+    header h1 span { color: #c9d1d9; }
+
+    #search {
+      flex: 1;
+      min-width: 200px;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      background: #0d1117;
+      color: #c9d1d9;
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    #search:focus { border-color: #58a6ff; }
+
+    #category-filter {
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      background: #0d1117;
+      color: #c9d1d9;
+      font-size: 0.95rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    #category-filter:focus { border-color: #58a6ff; }
+
+    main { padding: 2rem; max-width: 1100px; margin: 0 auto; }
+
+    #stats {
+      color: #8b949e;
+      font-size: 0.85rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .category {
+      margin-bottom: 2.5rem;
+    }
+
+    .category-title {
+      font-size: 1.2rem;
+      color: #f0f6fc;
+      border-bottom: 1px solid #30363d;
+      padding-bottom: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .subcategory-title {
+      font-size: 1rem;
+      color: #8b949e;
+      margin: 1rem 0 0.5rem;
+      padding-left: 0.5rem;
+      border-left: 3px solid #30363d;
+    }
+
+    .items-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .item {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+      transition: border-color 0.15s;
+    }
+
+    .item:hover { border-color: #58a6ff; }
+
+    .item a {
+      color: #58a6ff;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .item a:hover { text-decoration: underline; }
+
+    .item p {
+      margin-top: 0.35rem;
+      font-size: 0.85rem;
+      color: #8b949e;
+      line-height: 1.45;
+    }
+
+    #no-results {
+      display: none;
+      text-align: center;
+      color: #8b949e;
+      margin-top: 3rem;
+      font-size: 1.1rem;
+    }
+
+    #loading {
+      text-align: center;
+      color: #8b949e;
+      margin-top: 4rem;
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Awesome <span>Shell</span></h1>
+    <input id="search" type="search" placeholder="Search tools…" autocomplete="off" />
+    <select id="category-filter"><option value="">All categories</option></select>
+  </header>
+  <main>
+    <div id="stats"></div>
+    <div id="loading">Loading…</div>
+    <div id="content"></div>
+    <div id="no-results">No results found.</div>
+  </main>
+
+  <script>
+    let allData = [];
+
+    async function loadData() {
+      try {
+        const res = await fetch('/api/data');
+        if (!res.ok) throw new Error('Server error');
+        allData = await res.json();
+        populateCategoryFilter();
+        render();
+        document.getElementById('loading').style.display = 'none';
+      } catch (err) {
+        document.getElementById('loading').textContent = 'Failed to load data. Please refresh the page.';
+      }
+    }
+
+    function populateCategoryFilter() {
+      const select = document.getElementById('category-filter');
+      for (const cat of allData) {
+        const opt = document.createElement('option');
+        opt.value = cat.name;
+        opt.textContent = cat.name;
+        select.appendChild(opt);
+      }
+    }
+
+    function normalize(str) {
+      return str.toLowerCase();
+    }
+
+    function render() {
+      const query = normalize(document.getElementById('search').value.trim());
+      const categoryFilter = document.getElementById('category-filter').value;
+      const content = document.getElementById('content');
+      content.innerHTML = '';
+      let totalShown = 0;
+
+      for (const cat of allData) {
+        if (categoryFilter && cat.name !== categoryFilter) continue;
+
+        const catItems = filterItems(cat.items, query);
+        const subSections = [];
+        if (cat.subCategories) {
+          for (const sub of cat.subCategories) {
+            const subItems = filterItems(sub.items, query);
+            if (subItems.length) subSections.push({ name: sub.name, items: subItems });
+          }
+        }
+
+        if (!catItems.length && !subSections.length) continue;
+
+        const section = document.createElement('div');
+        section.className = 'category';
+        section.innerHTML = `<div class="category-title">${escHtml(cat.name)}</div>`;
+
+        if (catItems.length) {
+          section.appendChild(buildGrid(catItems));
+          totalShown += catItems.length;
+        }
+
+        for (const sub of subSections) {
+          const subtitle = document.createElement('div');
+          subtitle.className = 'subcategory-title';
+          subtitle.textContent = sub.name;
+          section.appendChild(subtitle);
+          section.appendChild(buildGrid(sub.items));
+          totalShown += sub.items.length;
+        }
+
+        content.appendChild(section);
+      }
+
+      document.getElementById('no-results').style.display = totalShown === 0 ? 'block' : 'none';
+      document.getElementById('stats').textContent = `${totalShown} tool${totalShown !== 1 ? 's' : ''} shown`;
+    }
+
+    function filterItems(items, query) {
+      if (!query) return items;
+      return items.filter(item =>
+        normalize(item.name).includes(query) ||
+        normalize(item.description).includes(query)
+      );
+    }
+
+    function buildGrid(items) {
+      const grid = document.createElement('div');
+      grid.className = 'items-grid';
+      for (const item of items) {
+        const card = document.createElement('div');
+        card.className = 'item';
+        card.innerHTML = `<a href="${escHtml(item.url)}" target="_blank" rel="noopener noreferrer">${escHtml(item.name)}</a>` +
+          (item.description ? `<p>${escHtml(item.description)}</p>` : '');
+        grid.appendChild(card);
+      }
+      return grid;
+    }
+
+    function escHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    document.getElementById('search').addEventListener('input', render);
+    document.getElementById('category-filter').addEventListener('change', render);
+
+    loadData();
+  </script>
+</body>
+</html>
