@@ -1,0 +1,12 @@
+{
+  "name": "awesome-shell-app",
+  "version": "1.0.0",
+  "description": "Web interface for the Awesome Shell curated list",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Awesome Shell</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      padding: 20px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #58a6ff;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .logo span { color: #f0883e; }
+
+    #search {
+      flex: 1;
+      min-width: 200px;
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      background: #0d1117;
+      color: #c9d1d9;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    #search:focus { border-color: #58a6ff; }
+
+    #search::placeholder { color: #6e7681; }
+
+    .stats {
+      font-size: 0.85rem;
+      color: #6e7681;
+      white-space: nowrap;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+      display: flex;
+      gap: 24px;
+    }
+
+    .sidebar {
+      width: 220px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #6e7681;
+      margin-bottom: 10px;
+    }
+
+    .category-nav {
+      list-style: none;
+    }
+
+    .category-nav li {
+      margin-bottom: 2px;
+    }
+
+    .category-nav a {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 5px 8px;
+      border-radius: 4px;
+      color: #8b949e;
+      text-decoration: none;
+      font-size: 0.875rem;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .category-nav a:hover,
+    .category-nav a.active {
+      background: #21262d;
+      color: #c9d1d9;
+    }
+
+    .category-nav .count {
+      background: #21262d;
+      color: #6e7681;
+      font-size: 0.75rem;
+      padding: 1px 6px;
+      border-radius: 10px;
+    }
+
+    .category-nav a.active .count {
+      background: #388bfd26;
+      color: #58a6ff;
+    }
+
+    .main-content { flex: 1; min-width: 0; }
+
+    .category-section {
+      margin-bottom: 40px;
+    }
+
+    .category-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #21262d;
+    }
+
+    .category-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #e6edf3;
+    }
+
+    .category-count {
+      font-size: 0.8rem;
+      color: #6e7681;
+      background: #21262d;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .subcategory-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #8b949e;
+      margin: 20px 0 10px;
+    }
+
+    .items-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+
+    .item-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 14px 16px;
+      transition: border-color 0.2s, transform 0.15s;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .item-card:hover {
+      border-color: #58a6ff;
+      transform: translateY(-1px);
+    }
+
+    .item-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .item-name a {
+      color: #58a6ff;
+      text-decoration: none;
+    }
+
+    .item-name a:hover { text-decoration: underline; }
+
+    .item-desc {
+      font-size: 0.85rem;
+      color: #8b949e;
+      line-height: 1.4;
+    }
+
+    .highlight { background: #f0883e33; color: #f0883e; border-radius: 2px; padding: 0 2px; }
+
+    .no-results {
+      text-align: center;
+      padding: 60px 20px;
+      color: #6e7681;
+    }
+
+    .no-results h3 { font-size: 1.1rem; margin-bottom: 8px; color: #8b949e; }
+
+    @media (max-width: 768px) {
+      .container { flex-direction: column; }
+      .sidebar { width: 100%; }
+      .items-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="logo" href="#">Awesome <span>Shell</span></a>
+    <input id="search" type="search" placeholder="Search tools…" autocomplete="off" />
+    <span class="stats" id="stats"></span>
+  </div>
+</header>
+
+<div class="container">
+  <nav class="sidebar">
+    <div class="sidebar-title">Categories</div>
+    <ul class="category-nav" id="category-nav">
+      <li><a href="#" data-cat="all" class="active">All <span class="count" id="all-count">0</span></a></li>
+    </ul>
+  </nav>
+
+  <main class="main-content" id="main-content">
+    <div class="no-results"><h3>Loading…</h3></div>
+  </main>
+</div>
+
+<script>
+  let allData = [];
+  let activeCategory = 'all';
+  let searchQuery = '';
+
+  async function init() {
+    try {
+      const res = await fetch('/api/data');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      allData = await res.json();
+    } catch (err) {
+      document.getElementById('main-content').innerHTML =
+        `<div class="no-results"><h3>Failed to load data</h3><p>${escHtml(err.message)}</p></div>`;
+      return;
+    }
+    buildNav();
+    render();
+  }
+
+  function totalItems(cat) {
+    return cat.items.length + cat.subcategories.reduce((s, sc) => s + sc.items.length, 0);
+  }
+
+  function buildNav() {
+    const nav = document.getElementById('category-nav');
+    let total = 0;
+    allData.forEach(cat => {
+      const n = totalItems(cat);
+      total += n;
+      const li = document.createElement('li');
+      li.innerHTML = `<a href="#" data-cat="${cat.name}">${cat.name} <span class="count">${n}</span></a>`;
+      li.querySelector('a').addEventListener('click', e => {
+        e.preventDefault();
+        setCategory(cat.name);
+      });
+      nav.appendChild(li);
+    });
+    document.getElementById('all-count').textContent = total;
+    nav.querySelector('[data-cat="all"]').addEventListener('click', e => {
+      e.preventDefault();
+      setCategory('all');
+    });
+  }
+
+  function setCategory(cat) {
+    activeCategory = cat;
+    document.querySelectorAll('.category-nav a').forEach(a => {
+      a.classList.toggle('active', a.dataset.cat === cat);
+    });
+    render();
+  }
+
+  function highlight(text, query) {
+    if (!query) return escHtml(text);
+    const re = new RegExp(`(${escRe(query)})`, 'gi');
+    return escHtml(text).replace(re, '<mark class="highlight">$1</mark>');
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function escRe(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function matchesQuery(item, q) {
+    if (!q) return true;
+    const lq = q.toLowerCase();
+    return item.name.toLowerCase().includes(lq) || item.description.toLowerCase().includes(lq);
+  }
+
+  function renderItems(items, query) {
+    return items.filter(i => matchesQuery(i, query)).map(item => `
+      <div class="item-card">
+        <div class="item-name"><a href="${escHtml(item.url)}" target="_blank" rel="noopener">${highlight(item.name, query)}</a></div>
+        <div class="item-desc">${highlight(item.description, query)}</div>
+      </div>`).join('');
+  }
+
+  function render() {
+    const q = searchQuery.trim();
+    const main = document.getElementById('main-content');
+    let html = '';
+    let shownItems = 0;
+
+    const cats = activeCategory === 'all' ? allData : allData.filter(c => c.name === activeCategory);
+
+    cats.forEach(cat => {
+      const topItems = cat.items.filter(i => matchesQuery(i, q));
+      const subSections = cat.subcategories.map(sc => {
+        const filtered = sc.items.filter(i => matchesQuery(i, q));
+        return { name: sc.name, items: filtered };
+      }).filter(sc => sc.items.length > 0);
+
+      const catTotal = topItems.length + subSections.reduce((s, sc) => s + sc.items.length, 0);
+      if (catTotal === 0) return;
+      shownItems += catTotal;
+
+      html += `<section class="category-section" id="cat-${escHtml(cat.name.replace(/\s+/g,'-'))}">
+        <div class="category-header">
+          <h2 class="category-title">${escHtml(cat.name)}</h2>
+          <span class="category-count">${catTotal}</span>
+        </div>`;
+
+      if (topItems.length > 0) {
+        html += `<div class="items-grid">${renderItems(topItems, q)}</div>`;
+      }
+
+      subSections.forEach(sc => {
+        html += `<h3 class="subcategory-title">${escHtml(sc.name)}</h3>
+          <div class="items-grid">${renderItems(sc.items, q)}</div>`;
+      });
+
+      html += `</section>`;
+    });
+
+    if (!html) {
+      html = `<div class="no-results"><h3>No results found for "${escHtml(q)}"</h3><p>Try a different search term or category.</p></div>`;
+    }
+
+    main.innerHTML = html;
+    document.getElementById('stats').textContent = `${shownItems} tools`;
+  }
+
+  document.getElementById('search').addEventListener('input', e => {
+    searchQuery = e.target.value;
+    render();
+  });
+
+  init();
+</script>
+</body>
+</html>
