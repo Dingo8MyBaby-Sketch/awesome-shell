@@ -212,6 +212,110 @@
 
     .no-results h3 { font-size: 1.1rem; margin-bottom: 8px; color: #8b949e; }
 
+    /* Git Status panel */
+    .git-status-panel {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 28px;
+    }
+
+    .git-status-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .git-status-header h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #e6edf3;
+    }
+
+    .git-status-branch {
+      font-size: 0.8rem;
+      background: #388bfd26;
+      color: #58a6ff;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .git-status-toggle {
+      margin-left: auto;
+      font-size: 0.75rem;
+      color: #6e7681;
+    }
+
+    .git-status-body { display: block; }
+    .git-status-body.collapsed { display: none; }
+
+    .git-status-clean {
+      font-size: 0.875rem;
+      color: #3fb950;
+    }
+
+    .git-status-files {
+      margin-bottom: 10px;
+    }
+
+    .git-status-files-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #6e7681;
+      margin-bottom: 6px;
+    }
+
+    .git-status-files ul {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .git-status-files li {
+      font-size: 0.8rem;
+      font-family: ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+      background: #21262d;
+      padding: 2px 8px;
+      border-radius: 4px;
+      color: #c9d1d9;
+    }
+
+    .git-status-suggestions {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .suggestion {
+      font-size: 0.85rem;
+      padding: 8px 12px;
+      border-radius: 6px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .suggestion.success { background: #1a2d1a; border-left: 3px solid #3fb950; color: #3fb950; }
+    .suggestion.warning { background: #2d2200; border-left: 3px solid #d29922; color: #d29922; }
+    .suggestion.info    { background: #1a1f2d; border-left: 3px solid #58a6ff; color: #c9d1d9; }
+    .suggestion.action  { background: #1a1a2d; border-left: 3px solid #bc8cff; color: #c9d1d9; }
+
+    .suggestion code {
+      font-family: ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 0.82rem;
+      background: #0d1117;
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
     @media (max-width: 768px) {
       .container { flex-direction: column; }
       .sidebar { width: 100%; }
@@ -238,7 +342,8 @@
   </nav>
 
   <main class="main-content" id="main-content">
-    <div class="no-results"><h3>Loading…</h3></div>
+    <div id="git-status-container"></div>
+    <div id="tools-content"><div class="no-results"><h3>Loading…</h3></div></div>
   </main>
 </div>
 
@@ -247,13 +352,63 @@
   let activeCategory = 'all';
   let searchQuery = '';
 
+  async function loadGitStatus() {
+    const container = document.getElementById('git-status-container');
+    try {
+      const res = await fetch('/api/git-status');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.error) { container.innerHTML = ''; return; }
+
+      const iconMap = { success: '✅', warning: '⚠️', info: 'ℹ️', action: '🚀' };
+
+      function fileList(title, files, color) {
+        if (!files.length) return '';
+        return `<div class="git-status-files">
+          <div class="git-status-files-title">${escHtml(title)}</div>
+          <ul>${files.map(f => `<li style="border-left:2px solid ${color}">${escHtml(f)}</li>`).join('')}</ul>
+        </div>`;
+      }
+
+      const suggestionsHtml = data.suggestions.map(s => {
+        const msg = escHtml(s.message).replace(/(git [a-z-]+(?: [^\s]+)*)/g, (_, m) => `<code>${m}</code>`);
+        return `<div class="suggestion ${escHtml(s.type)}">${iconMap[s.type] || '•'} ${msg}</div>`;
+      }).join('');
+
+      container.innerHTML = `
+        <div class="git-status-panel">
+          <div class="git-status-header" id="git-status-toggle">
+            <h2>🔍 Git Status</h2>
+            ${data.branch ? `<span class="git-status-branch">${escHtml(data.branch)}</span>` : ''}
+            <span class="git-status-toggle" id="git-toggle-label">▼ collapse</span>
+          </div>
+          <div class="git-status-body" id="git-status-body">
+            ${fileList('Staged', data.staged, '#3fb950')}
+            ${fileList('Modified (unstaged)', data.unstaged, '#d29922')}
+            ${fileList('Untracked', data.untracked, '#6e7681')}
+            <div class="git-status-suggestions">${suggestionsHtml}</div>
+          </div>
+        </div>`;
+
+      document.getElementById('git-status-toggle').addEventListener('click', () => {
+        const body = document.getElementById('git-status-body');
+        const label = document.getElementById('git-toggle-label');
+        body.classList.toggle('collapsed');
+        label.textContent = body.classList.contains('collapsed') ? '▶ expand' : '▼ collapse';
+      });
+    } catch (e) {
+      container.innerHTML = '';
+    }
+  }
+
   async function init() {
+    loadGitStatus();
     try {
       const res = await fetch('/api/data');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       allData = await res.json();
     } catch (err) {
-      document.getElementById('main-content').innerHTML =
+      document.getElementById('tools-content').innerHTML =
         `<div class="no-results"><h3>Failed to load data</h3><p>${escHtml(err.message)}</p></div>`;
       return;
     }
@@ -324,7 +479,7 @@
 
   function render() {
     const q = searchQuery.trim();
-    const main = document.getElementById('main-content');
+    const main = document.getElementById('tools-content');
     let html = '';
     let shownItems = 0;
 
